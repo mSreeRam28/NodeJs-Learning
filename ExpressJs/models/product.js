@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const Cart = require('../models/cart');
+
 const p = path.join(__dirname, '..', 'data', 'products.json');
 
 const getProductsFromFile = callback => {
@@ -15,16 +17,26 @@ const getProductsFromFile = callback => {
 };
 
 module.exports = class Product {
-    constructor(title, price, description){
+    constructor(id, title, price, description){
+        this.id = id;
         this.title = title;
         this.price = price;
         this.description = description;
     }
 
     save(){
-        this.id = Math.random() * (899) + 100;
+        if(!this.id){
+            this.id = Math.floor(Math.random() * (900)) + 100;
+        }
         getProductsFromFile(products => {
-            products.push(this);
+            const productIndex = products.findIndex(p => p.id === this.id);
+
+            if(productIndex >= 0)
+                products[productIndex] = this;
+
+            else
+                products.push(this);
+                
             fs.writeFile(p, JSON.stringify(products), err => {
                 console.log(err);
             });
@@ -39,6 +51,18 @@ module.exports = class Product {
         getProductsFromFile(products => {
             const product = products.find(p => p.id === id);
             callback(product);
+        });
+    }
+
+    static delete(id){
+        getProductsFromFile(products => {
+            const product = products.find(p => p.id === id);
+            products = products.filter(p => p.id !== id);
+            fs.writeFile(p, JSON.stringify(products), err => {
+                if(!err){
+                    Cart.delete(id, product.price);
+                }
+            });
         });
     }
 };
