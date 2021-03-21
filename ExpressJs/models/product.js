@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const db = require('../util/database');
+
 const Cart = require('../models/cart');
 
 const p = path.join(__dirname, '..', 'data', 'products.json');
@@ -44,7 +46,8 @@ module.exports = class Product {
     }
 
     static fetchAll(callback){
-        getProductsFromFile(callback);
+        // getProductsFromFile(callback);
+        return db.execute('select * from products');
     }
 
     static findById(id, callback){
