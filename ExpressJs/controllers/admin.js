@@ -1,52 +1,57 @@
 const Product = require('../models/product');
 
-exports.getAddProduct = (req, res, next) => {
-    res.send('Get Add product page');
-};
-
 exports.postAddProduct = (req, res, next) => {
     console.log(req.body);
     const {title, price, description} = req.body;
-    const product = new Product(null, title, price, description);
-    product.save();
-    res.send('Added Product Successfully');
+    req.user.createProduct({
+        title: title,
+        price: price,
+        description: description
+    })
+    .then(result => {
+        console.log(result);
+        res.send('Added Product Successfully');
+    })
+    .catch(err => {
+        console.log(err);
+    });
 };
 
 exports.putEditProduct = (req, res, next) => {
     let prodId = req.params.productId;
     prodId = parseInt(prodId);
     const { title, price, description } = req.body;
-    Product.findById(prodId, product => {
-        if(product){
-            const editedProduct = new Product(prodId, title, price, description);
-            editedProduct.save();
+    req.user.getProducts({where: {id: prodId}})
+        .then(products => {
+            const product = products[0];
+            product.title = title;
+            product.price = price;
+            product.description = description;
+            return product.save();
+        })
+        .then(result => {
             res.send('Product Edited Successfully');
-        }
-        else
-            res.send('Product Not Found');
-    });
+        })
+        .catch(err => console.log(err));
 };
 
 exports.deleteProduct = (req, res, next) => {
     let prodId = req.params.productId;
     prodId = parseInt(prodId);
-    Product.findById(prodId, product => {
-        if(product){
-            Product.delete(prodId);
-            res.send('Product Deleted Successfully');
-        }
-        else
-            res.send('Product Not Found');
-    });
+    req.user.getProducts({where: {id: prodId}})
+    // Product.destroy({where: {id: prodId}})
+        .then(products => {
+            const product = products[0];
+            product.destroy();
+            res.send('Product deleted Successfully');
+        })
+        .catch(err => console.log(err));
 };
 
 exports.getProducts = (req, res, next) => {
-    // Product.fetchAll(products => {
-    //     res.send(products);
-    // });
-    Product.fetchAll()
-        .then(([rows, fieldData]) => {
-            res.send(rows);
+    req.user.getProducts()
+        .then(products => {
+            res.send(products);
         })
         .catch(err => console.log(err));
 };
