@@ -13,10 +13,18 @@ const User = sequelize.define('user', {
         type: Sequelize.STRING,
         allowNull: false
     },
+    password: {
+        type: Sequelize.STRING,
+        allowNull: false
+    },
     email: {
         type: Sequelize.TEXT,
         allowNull: false
-    }
+    },
+    role: {
+        type: Sequelize.STRING,
+        allowNull: false
+    },
 }, { timestamps: false });
 
 module.exports = User;
