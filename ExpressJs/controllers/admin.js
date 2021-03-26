@@ -1,9 +1,25 @@
 const Product = require('../models/product');
+const { validationResult } = require('express-validator');
+
+const checkValidationCode = (req, res) => {
+    const errors = validationResult(req);
+    if(!errors.isEmpty()){
+        const error = {};
+        errors.array().forEach(obj => error[obj.param] = obj.msg);
+        return JSON.stringify(error);
+    }
+    return null;
+}
 
 exports.postAddProduct = (req, res, next) => {
-    console.log(req.body);
+    const result = checkValidationCode(req, res);
+    if(result){
+        return res.status(422).send('Errors in input data\n' + result);
+    }
+
+    console.log(req.session.req);
     const {title, price, description} = req.body;
-    req.user.createProduct({
+    req.session.user.createProduct({
         title: title,
         price: price,
         description: description
@@ -18,10 +34,15 @@ exports.postAddProduct = (req, res, next) => {
 };
 
 exports.putEditProduct = (req, res, next) => {
+    const result = checkValidationCode(req, res);
+    if(result){
+        return res.status(422).send('Errors in input data\n' + result);
+    }
+
     let prodId = req.params.productId;
     prodId = parseInt(prodId);
     const { title, price, description } = req.body;
-    req.user.getProducts({where: {id: prodId}})
+    req.session.user.getProducts({where: {id: prodId}})
         .then(products => {
             const product = products[0];
             product.title = title;
@@ -38,7 +59,7 @@ exports.putEditProduct = (req, res, next) => {
 exports.deleteProduct = (req, res, next) => {
     let prodId = req.params.productId;
     prodId = parseInt(prodId);
-    req.user.getProducts({where: {id: prodId}})
+    req.session.user.getProducts({where: {id: prodId}})
     // Product.destroy({where: {id: prodId}})
         .then(products => {
             const product = products[0];
@@ -49,7 +70,7 @@ exports.deleteProduct = (req, res, next) => {
 };
 
 exports.getProducts = (req, res, next) => {
-    req.user.getProducts()
+    req.session.user.getProducts()
         .then(products => {
             res.send(products);
         })

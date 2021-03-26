@@ -1,5 +1,4 @@
 const Product = require('../models/product');
-const Cart = require('../models/cart');
 
 exports.getProducts = (req, res, next) => {
     Product.findAll()
@@ -38,7 +37,7 @@ exports.getCart = (req, res, next) => {
     //         res.send(cartProducts);
     //     });
     // });
-    req.user.getCart()
+    req.session.user.getCart()
         .then(cart => {
             return cart.getProducts();
         })
@@ -53,7 +52,7 @@ exports.postCart = (req, res, next) => {
     prodId = parseInt(prodId);
     let fetchedCart;
     let newQuantity = 1;
-    req.user.getCart()
+    req.session.user.getCart()
         .then(cart => {
             fetchedCart = cart;
             return cart.getProducts({where: {id: prodId}});
@@ -90,7 +89,7 @@ exports.postCart = (req, res, next) => {
 exports.deleteCart = (req, res, next) => {
     let prodId = req.params.productId;
     prodId = parseInt(prodId);
-    req.user.getCart()
+    req.session.user.getCart()
         .then(cart => {
             return cart.getProducts({where: {id: prodId}});
         })
@@ -121,13 +120,13 @@ exports.deleteCart = (req, res, next) => {
 
 exports.createOrder = (req, res, next) => {
     let fetchedCart;
-    req.user.getCart()
+    req.session.user.getCart()
         .then(cart => {
             fetchedCart = cart;
             return cart.getProducts();
         })
         .then(products => {
-            return req.user.createOrder()
+            return req.session.user.createOrder()
                 .then(order => {
                     return order.addProducts(products.map(product => {
                         product.orderItem = { quantity: product.cartItem.quantity };
@@ -146,7 +145,7 @@ exports.createOrder = (req, res, next) => {
 };
 
 exports.getOrders = (req, res, next) => {
-    req.user.getOrders({include: ['products']})
+    req.session.user.getOrders({include: ['products']})
         .then(orders => {
             res.send(orders);
         })

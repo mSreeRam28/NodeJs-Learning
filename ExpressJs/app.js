@@ -1,8 +1,13 @@
 const express = require('express');
 
 const session = require('express-session');
-const MySqlStore = require('express-mysql-session');
+const MySqlStore = require('express-mysql-session')(session);
+// const redis = require("redis");
+// const redisClient = redis.createClient();
+// const redisStore = require('connect-redis')(session);
 const sequelize = require('./util/database');
+const csrf = require('csurf');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
@@ -28,16 +33,23 @@ const store = new MySqlStore({
     database: 'nodelearningdb'
 });
 app.use(session({secret: 'secret key', resave: false, saveUninitialized: false, store: store}));
+// app.use(cookieParser());
+// app.use(csrf({cookie: true}));
+
+// app.use(
+//     session({
+//         secret:"terces", 
+//         resave:false, 
+//         saveUninitialized:false,
+//         store: new redisStore({ host: 'localhost', port: 6379, client: redisClient, ttl: 86400 }),
+//     })
+// );
 app.use((req, res, next) => {
     if(!req.session.user){
         return next();
     }
-    User.findByPk(req.session.user.id)
-        .then(user => {
-            req.user = user;
-            next();
-        })
-        .catch(err => console.log(err));
+    req.session.user = User.build(req.session.user);
+    next();
 });
 
 app.use(authRoutes);
@@ -66,23 +78,23 @@ sequelize
     // .sync({force: true})
     // .sync({alter: true})
     .sync()
-    .then(result => {
-        return User.findByPk(1);
-    })
-    .then(user => {
-        if(!user)
-            return User.create({name: 'Ram',password: 'Ram', email: 'test@test.com', role: 'ADMIN'});
-        return user;
-    })
-    .then(user => {
-        user.getCart()
-            .then(cart => {
-                if(cart)
-                    return cart;
-                return user.createCart();
-            })
-            .catch(err => console.log(err));
-    })
+    // .then(result => {
+    //     return User.findByPk(1);
+    // })
+    // .then(user => {
+    //     if(!user)
+    //         return User.create({name: 'Ram',password: 'Ram', email: 'test@test.com', role: 'ADMIN'});
+    //     return user;
+    // })
+    // .then(user => {
+    //     user.getCart()
+    //         .then(cart => {
+    //             if(cart)
+    //                 return cart;
+    //             return user.createCart();
+    //         })
+    //         .catch(err => console.log(err));
+    // })
     .then(result => {
         app.listen(3000);
     })
