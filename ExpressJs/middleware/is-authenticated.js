@@ -2,7 +2,7 @@ const _ = require('lodash');
 
 exports.loginAuthentication = (req, res, next) => {
     if(!req.session.isLoggedIn){
-        res.send('Access Denied');
+        res.status(403).send('Access Denied');
     }
     else{
         next();
@@ -14,6 +14,6 @@ exports.adminAuthentication = (req, res, next) => {
         next();
     }
     else{
-        res.send('You are not Authorized');
+        res.status(401).send('You are not Authorized');
     }
 };

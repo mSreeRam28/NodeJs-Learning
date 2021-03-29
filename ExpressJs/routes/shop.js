@@ -8,17 +8,19 @@ const isAuthenticated = require('../middleware/is-authenticated');
 
 const router = express.Router();
 
+const paramValidation = param('productId').exists().isInt().withMessage('Product param must be an Integer');
+
 router.get('/', shopController.getIndex);
 
 router.get('/products', shopController.getProducts);
 
-router.get('/products/:productId', param('productId').exists().isInt().withMessage('Product param must be an Integer'), shopController.getProduct);
+router.get('/products/:productId', paramValidation, shopController.getProduct);
 
 router.get('/cart', isAuthenticated.loginAuthentication, shopController.getCart);
 
-router.post('/addtocart/:productId', param('productId').exists().isInt().withMessage('Product param must be an Integer'), isAuthenticated.loginAuthentication, shopController.postCart);
+router.post('/addtocart/:productId', paramValidation, isAuthenticated.loginAuthentication, shopController.postCart);
 
-router.delete('/deletefromcart/:productId', param('productId').exists().isInt().withMessage('Product param must be an Integer'), isAuthenticated.loginAuthentication, shopController.deleteCart);
+router.delete('/deletefromcart/:productId', paramValidation, isAuthenticated.loginAuthentication, shopController.deleteCart);
 
 router.get('/orders', isAuthenticated.loginAuthentication, shopController.getOrders);
 

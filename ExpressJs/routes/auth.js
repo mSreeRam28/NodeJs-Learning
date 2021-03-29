@@ -18,6 +18,7 @@ const signup = [body('email').isEmail().withMessage('Not a valid Email').custom(
                             }
                         });
                 }).normalizeEmail(),
+                body('name').trim().isLength({max: 5}),
                 body('password').isLength({min: 8}).withMessage('Password must be 8 characters long').trim().exists(),
                 body('confirmPassword').custom((value, {req}) => {
                     if(value !== req.body.password){

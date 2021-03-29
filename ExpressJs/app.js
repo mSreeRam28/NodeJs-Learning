@@ -17,6 +17,8 @@ const authRoutes = require('./routes/auth');
 
 const errorController = require('./controllers/error');
 
+const isAuthenticated = require('./middleware/is-authenticated'); 
+
 const Product = require('./models/product');
 const User = require('./models/user');
 const Cart = require('./models/cart');
@@ -53,10 +55,14 @@ app.use((req, res, next) => {
 });
 
 app.use(authRoutes);
-app.use('/admin', adminRoutes);
+app.use('/admin', isAuthenticated.loginAuthentication, isAuthenticated.adminAuthentication, adminRoutes);
 app.use(shopRoutes);
 
 app.use(errorController.getNotFoundPage);
+
+app.use((error, req, res, next) => {
+    res.status(500).send(error);
+});
 
 //Product-User association
 Product.belongsTo(User, {constraints: true, onDelete: 'CASCADE'});
@@ -78,24 +84,11 @@ sequelize
     // .sync({force: true})
     // .sync({alter: true})
     .sync()
-    // .then(result => {
-    //     return User.findByPk(1);
-    // })
-    // .then(user => {
-    //     if(!user)
-    //         return User.create({name: 'Ram',password: 'Ram', email: 'test@test.com', role: 'ADMIN'});
-    //     return user;
-    // })
-    // .then(user => {
-    //     user.getCart()
-    //         .then(cart => {
-    //             if(cart)
-    //                 return cart;
-    //             return user.createCart();
-    //         })
-    //         .catch(err => console.log(err));
-    // })
     .then(result => {
         app.listen(3000);
     })
-    .catch(err => console.log(err));
+    .catch(err => {
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
+    });

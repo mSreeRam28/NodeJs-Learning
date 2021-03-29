@@ -1,5 +1,6 @@
 const Product = require('../models/product');
 const { validationResult } = require('express-validator');
+const { ProductNotFoundError } = require('../error/error');
 
 const checkValidationCode = (req, res) => {
     const errors = validationResult(req);
@@ -17,7 +18,6 @@ exports.postAddProduct = (req, res, next) => {
         return res.status(422).send('Errors in input data\n' + result);
     }
 
-    console.log(req.session.req);
     const {title, price, description} = req.body;
     req.session.user.createProduct({
         title: title,
@@ -25,11 +25,15 @@ exports.postAddProduct = (req, res, next) => {
         description: description
     })
     .then(result => {
-        console.log(result);
+        if(!result){
+            return res.status(500).send('Adding Product failed');
+        }
         res.send('Added Product Successfully');
     })
     .catch(err => {
-        console.log(err);
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
     });
 };
 
@@ -41,19 +45,29 @@ exports.putEditProduct = (req, res, next) => {
 
     let prodId = req.params.productId;
     prodId = parseInt(prodId);
-    const { title, price, description } = req.body;
     req.session.user.getProducts({where: {id: prodId}})
         .then(products => {
+            if(!products || products.length <= 0){
+                throw new ProductNotFoundError();
+            }
             const product = products[0];
-            product.title = title;
-            product.price = price;
-            product.description = description;
+            for(let field of Object.keys(req.body)){
+                if(['title', 'price', 'description'].includes(field)){
+                    product[field] = req.body[field];
+                }
+            }
             return product.save();
         })
         .then(result => {
             res.send('Product Edited Successfully');
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            if(err instanceof Error)
+                return next(err);
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 };
 
 exports.deleteProduct = (req, res, next) => {
@@ -62,17 +76,35 @@ exports.deleteProduct = (req, res, next) => {
     req.session.user.getProducts({where: {id: prodId}})
     // Product.destroy({where: {id: prodId}})
         .then(products => {
+            if(!products || products.length <= 0){
+                throw new ProductNotFoundError();
+            }
             const product = products[0];
             product.destroy();
             res.send('Product deleted Successfully');
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            if(err instanceof Error)
+                return next(err);
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 };
 
 exports.getProducts = (req, res, next) => {
     req.session.user.getProducts()
         .then(products => {
+            if(!products){
+                throw new ProductNotFoundError();
+            }
             res.send(products);
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            if(err instanceof Error)
+                return next(err);
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 };

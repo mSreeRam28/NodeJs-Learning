@@ -3,11 +3,11 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const {Op} = require('sequelize');
 const { validationResult } = require('express-validator/check');
+const { UserNotFoundError } = require('../error/error');
 
 const checkValidationCode = (req, res) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()){
-        console.log(errors);
         const error = {};
         errors.array().forEach(obj => error[obj.param] = obj.msg);
         return JSON.stringify(error);
@@ -25,7 +25,7 @@ exports.login = (req, res, next) => {
     User.findOne({where: {email: email}})
         .then(user => {
             if(!user){
-                return res.send('User not found'); 
+                throw new UserNotFoundError(); 
             }
             bcrypt.compare(password, user.password)
                 .then(matched => {
@@ -36,9 +36,19 @@ exports.login = (req, res, next) => {
                     }
                     res.send('Incorrect password');
                 })
-                .catch(err => console.log(err));
+                .catch(err => {
+                    const error = new Error(err);
+                    error.httpStatusCode = 500;
+                    return next(error);
+                });
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            if(err instanceof Error)
+                return next(err);
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 };
 
 exports.signup = (req, res, next) => {
@@ -54,18 +64,31 @@ exports.signup = (req, res, next) => {
             return User.create({name: name, password: bcryptPassword, email: email, role: 'CUSTOMER'});
         })
         .then(user => {
+            if(!user){
+                throw new UserNotFoundError();
+            }
             user.getCart()
                 .then(cart => {
                     if(cart)
                         return;
                     return user.createCart();
                 })
-                .catch(err => console.log(err));
+                .catch(err => {
+                    const error = new Error(err);
+                    error.httpStatusCode = 500;
+                    return next(error);
+                });
         })
         .then(result => {
             res.send('User Signup Successful');
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            if(err instanceof Error)
+                return next(err);
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 };
 
 exports.logout = (req, res, next) => {
@@ -73,7 +96,7 @@ exports.logout = (req, res, next) => {
     req.session.destroy(err => {
         if(err){
             console.log(err);
-            return;
+            return res.status(500).send('Logout Failed');
         }
         res.send('Logged Out');
     });
@@ -88,13 +111,13 @@ exports.resetPassword = (req, res, next) => {
     crypto.randomBytes(32, (err, buffer) => {
         if(err){
             console.log(err);
-            return res.send('Reset Failed');
+            return res.status(500).send('Reset Failed');
         }
         const token = buffer.toString('hex');
         User.findOne({where: {email: req.body.email}})
             .then(user => {
                 if(!user){
-                    return res.send('No account with the email found');
+                    throw new UserNotFoundError('Account not Found', 404, 'No account found for given email');
                 }
                 user.resetToken = token;
                 user.resetTokenExpiration = new Date().getTime() + 3600000;//Date.now() + 3600000;
@@ -102,9 +125,19 @@ exports.resetPassword = (req, res, next) => {
                     .then(result => {
                         res.send(token);
                     })
-                    .catch(err => console.log(err));
+                    .catch(err => {
+                        const error = new Error(err);
+                        error.httpStatusCode = 500;
+                        return next(error);
+                    });
             })
-            .catch(err => console.log(err));
+            .catch(err => {
+                if(err instanceof Error)
+                    return next(err);
+                const error = new Error(err);
+                error.httpStatusCode = 500;
+                return next(error);
+            });
     });
 };
 
@@ -120,7 +153,7 @@ exports.verifyReset = (req, res, next) => {
     User.findOne({where: {resetToken: token, resetTokenExpiration: {[Op.gt]: new Date().getTime()}}})
         .then(user => {
             if(!user){
-                return res.send('Invalid Token');
+                return res.status(400).send('Invalid Token');
             }
             resetUser = user;
             bcrypt.hash(newPassword, 12)
@@ -133,7 +166,15 @@ exports.verifyReset = (req, res, next) => {
                 .then(result => {
                     res.send('Password Reset Successful');
                 })
-                .catch(err => console.log(err));
+                .catch(err => {
+                    const error = new Error(err);
+                    error.httpStatusCode = 500;
+                    return next(error);
+                });
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            const error = new Error(err);
+            error.httpStatusCode = 500;
+            return next(error);
+        });
 };
