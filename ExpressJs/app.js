@@ -61,6 +61,7 @@ app.use(shopRoutes);
 app.use(errorController.getNotFoundPage);
 
 app.use((error, req, res, next) => {
+    console.log('Server not found', error);
     res.status(500).send(error);
 });
 

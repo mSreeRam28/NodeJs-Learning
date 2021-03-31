@@ -1,16 +1,16 @@
 const express = require('express');
 
-const { body, param } = require('express-validator/check');
+const authController = require('../controllers/auth');
 
 const User = require('../models/user');
 
-const authController = require('../controllers/auth');
-
 const isAuthenticated = require('../middleware/is-authenticated');
+
+const { body } = require('express-validator');
 
 const router = express.Router();
 
-const signup = [body('email').isEmail().withMessage('Not a valid Email').custom((value, {req}) => {
+const signupValidation = [body('email').isEmail().withMessage('Not a valid Email').custom((value, {req}) => {
                     return User.findOne({where: {email: value}})
                         .then(user => {
                             if(user){
@@ -27,19 +27,15 @@ const signup = [body('email').isEmail().withMessage('Not a valid Email').custom(
                     return true;
                 }).trim().exists()];
 
-const login = [body('email').isEmail().withMessage('Not a valid Email').normalizeEmail().exists(),
-                body('password').isLength({min: 8}).withMessage('Password must be 8 characters long').trim().exists()];
+const loginValidation = [body('email').isEmail().withMessage('Not a valid Email').normalizeEmail().exists(),
+                        body('password').isLength({min: 8}).withMessage('Password must be 8 characters long').trim().exists()];
 
-const tokenParam = param('token').exists().isAlphanumeric();
+router.post('/signup', signupValidation, authController.signUp);
 
-router.post('/login', login, authController.login);
+router.post('/login', loginValidation, authController.login);
 
-router.post('/signup', signup, authController.signup);
+router.get('/status', isAuthenticated, authController.getStatus);
 
-router.post('/logout', isAuthenticated.loginAuthentication, authController.logout);
-
-router.post('/reset', login[0], authController.resetPassword);
-
-router.put('/reset/:token', login[1], tokenParam, authController.verifyReset);
+router.put('/editstatus', isAuthenticated, body('status').trim().notEmpty().withMessage('Status must be provided'), authController.editStatus);
 
 module.exports = router;

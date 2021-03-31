@@ -1,4 +1,5 @@
 const Product = require('../models/product');
+const _ = require('lodash');
 const { validationResult } = require('express-validator');
 const { ProductNotFoundError } = require('../error/error');
 
@@ -15,7 +16,7 @@ const checkValidationCode = (req, res) => {
 exports.getProducts = (req, res, next) => {
     Product.findAll()
         .then(products => {
-            if(!products){
+            if(_.isNil(products)){
                 throw new ProductNotFoundError();
             }
             res.send(products);
@@ -39,7 +40,7 @@ exports.getProduct = (req, res, next) => {
     productId = parseInt(productId);
     Product.findByPk(productId)
         .then(product => {
-            if(!product)
+            if(_.isNil(product))
                 throw new ProductNotFoundError();
             res.send(product);
         })
@@ -74,6 +75,8 @@ exports.getCart = (req, res, next) => {
             return cart.getProducts();
         })
         .then(products => {
+            if(_.isNil(products))
+                throw new ProductNotFoundError();
             res.send(products);
         })
         .catch(err => {

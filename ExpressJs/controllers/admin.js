@@ -1,4 +1,5 @@
 const Product = require('../models/product');
+const _ = require('lodash');
 const { validationResult } = require('express-validator');
 const { ProductNotFoundError } = require('../error/error');
 
@@ -25,7 +26,7 @@ exports.postAddProduct = (req, res, next) => {
         description: description
     })
     .then(result => {
-        if(!result){
+        if(_.isNil(result)){
             return res.status(500).send('Adding Product failed');
         }
         res.send('Added Product Successfully');
@@ -47,7 +48,8 @@ exports.putEditProduct = (req, res, next) => {
     prodId = parseInt(prodId);
     req.session.user.getProducts({where: {id: prodId}})
         .then(products => {
-            if(!products || products.length <= 0){
+            console.log(products);
+            if(_.isNil(products) || _.isEmpty(products)){
                 throw new ProductNotFoundError();
             }
             const product = products[0];
@@ -76,7 +78,7 @@ exports.deleteProduct = (req, res, next) => {
     req.session.user.getProducts({where: {id: prodId}})
     // Product.destroy({where: {id: prodId}})
         .then(products => {
-            if(!products || products.length <= 0){
+            if(_.isNil(products) || _.isEmpty(products)){
                 throw new ProductNotFoundError();
             }
             const product = products[0];
@@ -95,7 +97,7 @@ exports.deleteProduct = (req, res, next) => {
 exports.getProducts = (req, res, next) => {
     req.session.user.getProducts()
         .then(products => {
-            if(!products){
+            if(_.isNil(products)){
                 throw new ProductNotFoundError();
             }
             res.send(products);
