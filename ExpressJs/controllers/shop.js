@@ -13,24 +13,24 @@ const checkValidationCode = (req, res) => {
     return null;
 };
 
-exports.getProducts = (req, res, next) => {
-    Product.findAll()
-        .then(products => {
-            if(_.isNil(products)){
-                throw new ProductNotFoundError();
-            }
-            res.send(products);
-        })
-        .catch(err => {
-            if(err instanceof Error)
-                return next(err);
-            const error = new Error(err);
-            error.httpStatusCode = 500;
-            return next(error);
-        });
+exports.getProducts = async (req, res, next) => {
+    try{
+        const products = await Product.findAll();
+        if(_.isNil(products)){
+            throw new ProductNotFoundError();
+        }
+        res.send(products);
+    }
+    catch(err) {
+        if(err instanceof Error)
+            return next(err);
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
+    };
 };
 
-exports.getProduct = (req, res, next) => {
+exports.getProduct = async (req, res, next) => {
     const result = checkValidationCode(req, res);
     if(result){
         return res.status(422).send('Errors in input data\n' + result);
@@ -38,26 +38,26 @@ exports.getProduct = (req, res, next) => {
 
     let productId = req.params.productId;
     productId = parseInt(productId);
-    Product.findByPk(productId)
-        .then(product => {
-            if(_.isNil(product))
-                throw new ProductNotFoundError();
-            res.send(product);
-        })
-        .catch(err => {
-            if(err instanceof Error)
-                return next(err);
-            const error = new Error(err);
-            error.httpStatusCode = 500;
-            return next(error);
-        });
+    try{
+        const product = await Product.findByPk(productId);
+        if(_.isNil(product))
+            throw new ProductNotFoundError();
+        res.send(product);
+    }
+    catch(err) {
+        if(err instanceof Error)
+            return next(err);
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
+    };
 };
 
 exports.getIndex = (req, res, next) => {
     res.send('Welcome page');
 };
 
-exports.getCart = (req, res, next) => {
+exports.getCart = async (req, res, next) => {
     // Cart.getCart(cart => {
     //     Product.fetchAll(products => {
     //         const cartProducts = {products: [], totalPrice: cart.totalPrice};
@@ -70,23 +70,21 @@ exports.getCart = (req, res, next) => {
     //         res.send(cartProducts);
     //     });
     // });
-    req.session.user.getCart()
-        .then(cart => {
-            return cart.getProducts();
-        })
-        .then(products => {
-            if(_.isNil(products))
-                throw new ProductNotFoundError();
-            res.send(products);
-        })
-        .catch(err => {
-            const error = new Error(err);
-            error.httpStatusCode = 500;
-            return next(error);
-        });
+    try{
+        const cart = await req.session.user.getCart();
+        const products = await cart.getProducts();
+        if(_.isNil(products))
+            throw new ProductNotFoundError();
+        res.send(products);
+    }
+    catch(err) {
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
+    };
 };
 
-exports.postCart = (req, res, next) => {
+exports.postCart = async (req, res, next) => {
     const result = checkValidationCode(req, res);
     if(result){
         return res.status(422).send('Errors in input data\n' + result);
@@ -94,40 +92,33 @@ exports.postCart = (req, res, next) => {
 
     let prodId = req.params.productId;
     prodId = parseInt(prodId);
-    let fetchedCart;
     let newQuantity = 1;
-    req.session.user.getCart()
-        .then(cart => {
-            fetchedCart = cart;
-            return cart.getProducts({where: {id: prodId}});
-        })
-        .then(products => {
-            let product;
-            if(products.length > 0){
-                product = products[0];
-            }
-            if(product){
-                let oldQuantity = product.cartItem.quantity;
-                newQuantity = oldQuantity + 1;
-                return product;
-            }
-            return Product.findByPk(prodId);
-        })
-        .then(product => {
-            if(!product)
-                throw new ProductNotFoundError();
-            fetchedCart.addProduct(product, { through: {quantity: newQuantity} });
-        })
-        .then(result => {
-            res.send('Added to cart Successfully');
-        })
-        .catch(err => {
-            if(err instanceof Error)
-                return next(err);
-            const error = new Error(err);
-            error.httpStatusCode = 500;
-            return next(error);
-        });
+    try{
+        const cart = await req.session.user.getCart();
+        const products = await cart.getProducts({where: {id: prodId}});
+        let existingProduct;
+        if(products.length > 0){
+            existingProduct = products[0];
+        }
+        if(existingProduct){
+            let oldQuantity = existingProduct.cartItem.quantity;
+            newQuantity = oldQuantity + 1;
+            await cart.addProduct(existingProduct, { through: {quantity: newQuantity} });
+            return;
+        }
+        const product = await Product.findByPk(prodId);
+        if(!product)
+            throw new ProductNotFoundError();
+        await cart.addProduct(product, { through: {quantity: newQuantity} });
+        res.send('Added to cart Successfully');
+    }
+    catch(err) {
+        if(err instanceof Error)
+            return next(err);
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
+    };
     // Product.findById(prodId, product => {
     //     if(product){
     //         Cart.addCart(prodId, product.price);
@@ -138,7 +129,7 @@ exports.postCart = (req, res, next) => {
     // });
 };
 
-exports.deleteCart = (req, res, next) => {
+exports.deleteCart = async (req, res, next) => {
     const result = checkValidationCode(req, res);
     if(result){
         return res.status(422).send('Errors in input data\n' + result);
@@ -146,31 +137,25 @@ exports.deleteCart = (req, res, next) => {
 
     let prodId = req.params.productId;
     prodId = parseInt(prodId);
-    req.session.user.getCart()
-        .then(cart => {
-            return cart.getProducts({where: {id: prodId}});
-        })
-        .then(products => {
-            let product;
-            if(products.length > 0){
-                product = products[0];
-                return product.cartItem.destroy();
-            }
-            return;
-        })
-        .then(result => {
-            if(result)
-                res.send('Deleted Cart Item Successfully');
-            else
-                throw new ProductNotFoundError();
-        })
-        .catch(err => {
-            if(err instanceof Error)
-                return next(err);
-            const error = new Error(err);
-            error.httpStatusCode = 500;
-            return next(error);
-        });
+    try{
+        const cart = await req.session.user.getCart();
+        const products = await cart.getProducts({where: {id: prodId}});
+        let product;
+        if(products.length > 0){
+            product = products[0];
+            await product.cartItem.destroy();
+            res.send('Deleted Cart Item Successfully');
+        }
+        else
+            throw new ProductNotFoundError();
+    }
+    catch(err) {
+        if(err instanceof Error)
+            return next(err);
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
+    };
     // Product.findById(prodId, product => {
     //     if(product){
     //         Cart.delete(prodId, product.price);
@@ -181,52 +166,33 @@ exports.deleteCart = (req, res, next) => {
     // });
 };
 
-exports.createOrder = (req, res, next) => {
-    let fetchedCart;
-    req.session.user.getCart()
-        .then(cart => {
-            fetchedCart = cart;
-            return cart.getProducts();
-        })
-        .then(products => {
-            return req.session.user.createOrder()
-                .then(order => {
-                    return order.addProducts(products.map(product => {
-                        product.orderItem = { quantity: product.cartItem.quantity };
-                        return product;
-                    }))
-                })
-                .catch(err => {
-                    const error = new Error(err);
-                    error.httpStatusCode = 500;
-                    return next(error);
-                });
-        })
-        .then(result => {
-            return fetchedCart.setProducts(null);
-        })
-        .then(result => {
-            res.send('Order created Successfully');
-        })
-        .catch(err => {
-            const error = new Error(err);
-            error.httpStatusCode = 500;
-            return next(error);
-        });
+exports.createOrder = async (req, res, next) => {
+    try{
+        const cart = await req.session.user.getCart();
+        const products = await cart.getProducts();
+        const order = await req.session.user.createOrder();
+        await order.addProducts(products.map(product => {
+            product.orderItem = { quantity: product.cartItem.quantity };
+            return product;
+        }));
+        await cart.setProducts(null);
+        res.send('Order created Successfully');
+    }
+    catch(err) {
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
+    };
 };
 
-exports.getOrders = (req, res, next) => {
-    req.session.user.getOrders({include: ['products']})
-        .then(orders => {
-            res.send(orders);
-        })
-        .catch(err => {
-            const error = new Error(err);
-            error.httpStatusCode = 500;
-            return next(error);
-        });
-};
-
-exports.getCheckout = (req, res, next) => {
-    res.send('Get Checkout page');
+exports.getOrders = async (req, res, next) => {
+    try{
+        const orders = await req.session.user.getOrders({include: ['products']});
+        res.send(orders);
+    }
+    catch(err) {
+        const error = new Error(err);
+        error.httpStatusCode = 500;
+        return next(error);
+    };
 };
