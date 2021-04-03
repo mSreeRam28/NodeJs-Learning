@@ -2,13 +2,17 @@ const express = require('express');
 
 const sequelize = require('./util/database');
 
-const feedRoutes = require('./routes/feed');
-const authRoutes = require('./routes/auth');
+const User = require('./models/user');
+const Post = require('./models/post');
+
+const _ = require('lodash');
 
 const isAuthenticated = require('./middleware/is-authenticated');
 
-const User = require('./models/user');
-const Post = require('./models/post');
+const { graphqlHTTP } = require('express-graphql');
+
+const graphqlSchema = require('./graphql/schema');
+const graphqlResolvers = require('./graphql/resolvers');
 
 const app = express();
 
@@ -20,8 +24,21 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/feed', isAuthenticated, feedRoutes);
-app.use('/auth', authRoutes);
+app.use(isAuthenticated);
+
+app.use('/graphql', graphqlHTTP({
+    schema: graphqlSchema,
+    rootValue: graphqlResolvers,
+    graphiql: true,
+    customFormatErrorFn(err){
+        if(_.isNil(err.originalError))
+            return err;
+        let {data, httpStatusCode} = err.originalError;
+        httpStatusCode = httpStatusCode || 500;
+        const message = err.message || 'Error Occured';
+        return {message: message, data: data, httpStatusCode: httpStatusCode};
+    }
+}));
 
 app.use((req, res, next) => {
     res.status(404).json({message: 'Page Not Found'});
@@ -40,11 +57,7 @@ sequelize
     // .sync({force: true})
     .sync()
     .then(result => {
-        const server = app.listen(3000);
-        const io = require('./socket').init(server);
-        io.on('connection', socket => {
-            console.log('Client Connected');
-        });
+        app.listen(3000);
     })
     .catch(err => {
         const error = new Error(err);
