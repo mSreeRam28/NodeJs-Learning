@@ -10,6 +10,9 @@ const isAuthenticated = require('./middleware/is-authenticated');
 const User = require('./models/user');
 const Post = require('./models/post');
 
+const dotenv = require('dotenv');
+dotenv.config();
+
 const app = express();
 
 app.use(express.json());
@@ -40,7 +43,7 @@ sequelize
     // .sync({force: true})
     .sync()
     .then(result => {
-        const server = app.listen(3000);
+        const server = app.listen(process.env.PORT);
         const io = require('./socket').init(server);
         io.on('connection', socket => {
             console.log('Client Connected');

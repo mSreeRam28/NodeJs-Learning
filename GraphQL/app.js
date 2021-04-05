@@ -9,13 +9,19 @@ const _ = require('lodash');
 
 const isAuthenticated = require('./middleware/is-authenticated');
 
+const cors = require('cors');
+
 const { graphqlHTTP } = require('express-graphql');
 
 const graphqlSchema = require('./graphql/schema');
 const graphqlResolvers = require('./graphql/resolvers');
 
+const dotenv = require('dotenv');
+dotenv.config();
+
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -57,7 +63,7 @@ sequelize
     // .sync({force: true})
     .sync()
     .then(result => {
-        app.listen(3000);
+        app.listen(process.env.PORT);
     })
     .catch(err => {
         const error = new Error(err);

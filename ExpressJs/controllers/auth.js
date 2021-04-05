@@ -2,7 +2,7 @@ const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const {Op} = require('sequelize');
-const { validationResult } = require('express-validator/check');
+const { validationResult } = require('express-validator');
 const { UserNotFoundError } = require('../error/error');
 
 const checkValidationCode = (req, res) => {

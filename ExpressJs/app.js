@@ -26,15 +26,23 @@ const CartItem = require('./models/cart-product');
 const Order = require('./models/order');
 const OrderItem = require('./models/order-product');
 
+const dotenv = require('dotenv');
+dotenv.config();
+
+const helmet = require('helmet');
+const compression = require('compression');
+
+app.use(helmet());
+app.use(compression());
 app.use(express.json());
 const store = new MySqlStore({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: 'root',
-    database: 'nodelearningdb'
+    host: process.env.MYSQL_HOST,
+    port: process.env.MYSQL_PORT,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE
 });
-app.use(session({secret: 'secret key', resave: false, saveUninitialized: false, store: store}));
+app.use(session({secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false, store: store}));
 // app.use(cookieParser());
 // app.use(csrf({cookie: true}));
 
@@ -86,10 +94,10 @@ sequelize
     // .sync({alter: true})
     .sync()
     .then(result => {
-        app.listen(3000);
+        app.listen(process.env.PORT);
     })
     .catch(err => {
         const error = new Error(err);
         error.httpStatusCode = 500;
-        return next(error);
+        throw error;
     });
